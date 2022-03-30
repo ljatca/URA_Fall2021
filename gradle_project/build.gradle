@@ -1,9 +1,11 @@
 buildscript {
     repositories {
         mavenCentral()
+        flatDir dirs: "./plugin"
     }
     dependencies {
         classpath 'com.igormaznitsa:jcp:7.0.5'
+        classpath 'plugin:plugin:0.1.1-SNAPSHOT'
     }
 }
 
@@ -14,55 +16,27 @@ plugins {
 //apply plugin: 'java'
 apply plugin: 'application'
 apply plugin: 'com.igormaznitsa.jcp'
+apply plugin: 'me.champeau.mrjar'
 
 group 'org.example'
 version '1.0-SNAPSHOT'
 
 mainClassName = 'java.HelloWorld'
 
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(8))
-    }
-}
-
 repositories {
     mavenLocal()
     mavenCentral()
 }
 
-sourceSets {
-    java11 {
-        java {
-            srcDirs = ['build/jcp/java11']
-        }
-    }
-}
-
-dependencies {
-    implementation 'org.codehaus.groovy:groovy-all:3.0.5'
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
-
+multiRelease {
+    targetVersions "build/jcp/", "build/jcp/", 8, 11
 }
 
 test {
     useJUnitPlatform()
 }
 
-tasks.named('compileJava11Java') {
-    javaCompiler = javaToolchains.compilerFor {
-        languageVersion = JavaLanguageVersion.of(11)
-    }
-}
-
 jar {
-    // added duplicatesStrategy to avoid warning messages
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-
-    into('META-INF/versions/11') {
-        from sourceSets.java11.output
-    }
     manifest.attributes(
             'Multi-Release': 'true',
             'Main-Class': 'Main'
@@ -71,9 +45,6 @@ jar {
 }
 
 task compileWithJava8 (type: com.igormaznitsa.jcp.gradle.JcpTask) {
-
-    println "executing compileWithJava8"
-    println sourceSets.main.java.srcDirs
 
     def java_dir = 'build/jcp/java'
     outputs.dir(java_dir)
@@ -89,9 +60,6 @@ task compileWithJava8 (type: com.igormaznitsa.jcp.gradle.JcpTask) {
 }
 
 task compileWithJava11 (type: com.igormaznitsa.jcp.gradle.JcpTask) {
-
-    println "executing compileWithJava11"
-    println sourceSets.main.java.srcDirs
 
     def java_dir = 'build/jcp/java11'
 
@@ -123,13 +91,12 @@ task deleteDuplicatedFiles(){
 
         // get all directories just below the jcp directory
         File dir = new File("build/jcp")
-        File[] directories = new File("build/jcp").listFiles()
         FileFilter fileFilter = new FileFilter() {
             public boolean accept(File file) {
                 return file.isDirectory();
             }
         }
-        directories = dir.listFiles(fileFilter);
+        File[] directories = dir.listFiles(fileFilter);
         // stored the directories in alphabetical order
         Arrays.sort(directories)
 
@@ -161,7 +128,6 @@ compileWithJava8.dependsOn(compileWithJava11)
 deleteDuplicatedFiles.dependsOn compileWithJava8
 changeSourceFolder.dependsOn deleteDuplicatedFiles
 compileJava.dependsOn changeSourceFolder
-
 
 
 
